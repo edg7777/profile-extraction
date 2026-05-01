@@ -4,19 +4,19 @@ import BasicInfo from './pages/BasicInfo';
 import Education from './pages/Education';
 import WorkExperience from './pages/WorkExperience';
 import Projects from './pages/Projects';
-import Skills from './pages/Skills';
 import Awards from './pages/Awards';
 import JobIntention from './pages/JobIntention';
 import Settings from './pages/Settings';
+import ResumeUpload from './pages/ResumeUpload';
 
 const TABS = [
   { key: 'basic', label: '基本信息' },
   { key: 'education', label: '教育经历' },
   { key: 'work', label: '工作/实习经历' },
   { key: 'project', label: '项目经历' },
-  { key: 'skills', label: '技能' },
   { key: 'awards', label: '获奖/证书' },
   { key: 'intention', label: '求职意向' },
+  { key: 'upload', label: '简历解析' },
   { key: 'settings', label: '设置' },
 ];
 
@@ -129,9 +129,9 @@ export default function App() {
           {activeTab === 'education' && <Education />}
           {activeTab === 'work' && <WorkExperience />}
           {activeTab === 'project' && <Projects />}
-          {activeTab === 'skills' && <Skills />}
           {activeTab === 'awards' && <Awards />}
           {activeTab === 'intention' && <JobIntention />}
+          {activeTab === 'upload' && <ResumeUpload />}
           {activeTab === 'settings' && <Settings />}
         </main>
       </div>

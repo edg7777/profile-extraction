@@ -1,9 +1,60 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useProfileStore } from '@/store/profile-store';
+import { getLlmConfig, saveLlmConfig } from '@/utils/storage';
+import type { LlmConfig } from '@/utils/storage';
 
 export default function Settings() {
   const { currentProfile, saveProfile } = useProfileStore();
   const [importStatus, setImportStatus] = useState('');
+  const [llmConfig, setLlmConfig] = useState<LlmConfig>({
+    apiEndpoint: 'https://api.openai.com/v1/chat/completions',
+    apiKey: '',
+    model: 'gpt-4o-mini',
+    enabled: false,
+  });
+  const [llmSaveStatus, setLlmSaveStatus] = useState('');
+  const [showApiKey, setShowApiKey] = useState(false);
+
+  useEffect(() => {
+    getLlmConfig().then(setLlmConfig);
+  }, []);
+
+  const handleSaveLlmConfig = async () => {
+    try {
+      await saveLlmConfig(llmConfig);
+      setLlmSaveStatus('保存成功');
+      setTimeout(() => setLlmSaveStatus(''), 2000);
+    } catch {
+      setLlmSaveStatus('保存失败');
+    }
+  };
+
+  const handleTestLlm = async () => {
+    setLlmSaveStatus('正在测试连接...');
+    try {
+      const res = await fetch(llmConfig.apiEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${llmConfig.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: llmConfig.model,
+          messages: [{ role: 'user', content: '请回复 ok' }],
+          max_tokens: 10,
+        }),
+      });
+      if (res.ok) {
+        setLlmSaveStatus('✅ 连接成功！');
+      } else {
+        const errText = await res.text();
+        setLlmSaveStatus(`❌ 连接失败 (${res.status}): ${errText.substring(0, 100)}`);
+      }
+    } catch (err) {
+      setLlmSaveStatus(`❌ 连接失败: ${String(err)}`);
+    }
+    setTimeout(() => setLlmSaveStatus(''), 5000);
+  };
 
   const handleExport = () => {
     if (!currentProfile) return;
@@ -67,6 +118,74 @@ export default function Settings() {
               {importStatus}
             </p>
           )}
+        </div>
+
+        {/* LLM Config */}
+        <div className="border border-gray-200 rounded-lg p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-md font-medium text-gray-900">AI 智能解析配置</h3>
+              <p className="text-sm text-gray-500 mt-1">配置 LLM API 以启用 SmartResume 风格的高精度简历解析</p>
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={llmConfig.enabled}
+                onChange={(e) => setLlmConfig({ ...llmConfig, enabled: e.target.checked })}
+                className="w-4 h-4 text-primary-600 rounded" />
+              <span className="text-sm text-gray-700">启用</span>
+            </label>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">API 地址</label>
+              <input type="text" value={llmConfig.apiEndpoint}
+                onChange={(e) => setLlmConfig({ ...llmConfig, apiEndpoint: e.target.value })}
+                placeholder="https://api.openai.com/v1/chat/completions"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+              <p className="text-xs text-gray-400 mt-1">支持 OpenAI 兼容接口（如 OpenAI、DeepSeek、本地 Ollama 等）</p>
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">API Key</label>
+              <div className="flex gap-2">
+                <input type={showApiKey ? 'text' : 'password'} value={llmConfig.apiKey}
+                  onChange={(e) => setLlmConfig({ ...llmConfig, apiKey: e.target.value })}
+                  placeholder="sk-..."
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                <button onClick={() => setShowApiKey(!showApiKey)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
+                  {showApiKey ? '隐藏' : '显示'}
+                </button>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">密钥仅存储在本地浏览器中，不会发送到除 API 地址以外的任何服务器</p>
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">模型名称</label>
+              <input type="text" value={llmConfig.model}
+                onChange={(e) => setLlmConfig({ ...llmConfig, model: e.target.value })}
+                placeholder="gpt-4o-mini"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+              <p className="text-xs text-gray-400 mt-1">推荐：gpt-4o-mini、gpt-4o、deepseek-chat 等</p>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button onClick={handleSaveLlmConfig}
+                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm">
+                保存配置
+              </button>
+              <button onClick={handleTestLlm}
+                disabled={!llmConfig.apiKey || !llmConfig.apiEndpoint}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                测试连接
+              </button>
+              {llmSaveStatus && (
+                <span className={`self-center text-sm ${llmSaveStatus.includes('成功') ? 'text-green-600' : llmSaveStatus.includes('失败') ? 'text-red-600' : 'text-gray-500'}`}>
+                  {llmSaveStatus}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* About */}

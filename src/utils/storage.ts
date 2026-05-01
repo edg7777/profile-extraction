@@ -3,6 +3,30 @@ import type { Profile } from '@/types/profile';
 const PROFILES_KEY = 'autofill_profiles';
 const ACTIVE_PROFILE_KEY = 'autofill_active_profile_id';
 const FIELD_MAPPINGS_KEY = 'autofill_field_mappings';
+const LLM_CONFIG_KEY = 'autofill_llm_config';
+
+export interface LlmConfig {
+  apiEndpoint: string;
+  apiKey: string;
+  model: string;
+  enabled: boolean;
+}
+
+const DEFAULT_LLM_CONFIG: LlmConfig = {
+  apiEndpoint: 'https://api.openai.com/v1/chat/completions',
+  apiKey: '',
+  model: 'gpt-4o-mini',
+  enabled: false,
+};
+
+export async function getLlmConfig(): Promise<LlmConfig> {
+  const result = await chrome.storage.local.get(LLM_CONFIG_KEY);
+  return { ...DEFAULT_LLM_CONFIG, ...(result[LLM_CONFIG_KEY] || {}) };
+}
+
+export async function saveLlmConfig(config: LlmConfig): Promise<void> {
+  await chrome.storage.local.set({ [LLM_CONFIG_KEY]: config });
+}
 
 export async function getAllProfiles(): Promise<Profile[]> {
   const result = await chrome.storage.local.get(PROFILES_KEY);

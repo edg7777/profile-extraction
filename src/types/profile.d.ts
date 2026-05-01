@@ -43,12 +43,6 @@ export interface ProjectExperience {
   description: string;
 }
 
-export interface Skill {
-  id: string;
-  name: string;
-  level: string;
-}
-
 export interface Award {
   id: string;
   name: string;
@@ -85,7 +79,6 @@ export interface Profile {
   education: Education[];
   workExperience: WorkExperience[];
   projectExperience: ProjectExperience[];
-  skills: Skill[];
   awards: Award[];
   certificates: Certificate[];
   selfEvaluation: string;

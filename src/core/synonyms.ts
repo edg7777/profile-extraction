@@ -35,10 +35,6 @@ export const SYNONYM_MAP: Record<string, string[]> = {
   'projectExperience.techStack': ['技术栈', '使用技术', '技术工具', 'Tech Stack', 'Technologies', 'tech_stack'],
   'projectExperience.description': ['项目描述', '项目详情', 'Project Description', 'project_description'],
 
-  // 技能
-  'skills.name': ['技能名称', '技能', 'Skill', 'skill_name'],
-  'skills.level': ['熟练程度', '掌握程度', 'Proficiency', 'Level', 'skill_level'],
-
   // 获奖
   'awards.name': ['获奖名称', '奖项', '荣誉', 'Award', 'Honor', 'award_name'],
   'awards.date': ['获奖时间', 'Award Date', 'award_date'],

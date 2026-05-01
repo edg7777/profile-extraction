@@ -22,7 +22,7 @@ export function createEmptyProfile(name: string = '默认简历'): Profile {
     education: [],
     workExperience: [],
     projectExperience: [],
-    skills: [],
+
     awards: [],
     certificates: [],
     selfEvaluation: '',
