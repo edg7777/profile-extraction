@@ -57,7 +57,9 @@ function createFloatingBar(): void {
       if (statusEl) statusEl.textContent = '正在填充...';
 
       clearHighlights();
+      console.log('[AutoFill] 开始填充, profile:', profile.basic?.name);
       const result: FillResult = await fillPage(profile);
+      console.log('[AutoFill] 填充结果:', result);
 
       if (statusEl) {
         statusEl.textContent = `填充完成：${result.filled}/${result.total} 个字段`;

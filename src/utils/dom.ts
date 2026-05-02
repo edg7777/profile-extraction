@@ -1,11 +1,19 @@
 export function triggerInputEvents(element: HTMLElement, value: string): void {
+  // Focus the element first
+  element.focus();
+  element.dispatchEvent(new Event('focus', { bubbles: true }));
+
   if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
-    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-      element instanceof HTMLTextAreaElement
-        ? HTMLTextAreaElement.prototype
-        : HTMLInputElement.prototype,
-      'value'
-    )?.set;
+    const proto = element instanceof HTMLTextAreaElement
+      ? HTMLTextAreaElement.prototype
+      : HTMLInputElement.prototype;
+    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+
+    // Reset React's internal value tracker so React sees the change
+    const tracker = (element as any)._valueTracker;
+    if (tracker) {
+      tracker.setValue('');
+    }
 
     if (nativeInputValueSetter) {
       nativeInputValueSetter.call(element, value);
@@ -14,7 +22,8 @@ export function triggerInputEvents(element: HTMLElement, value: string): void {
     }
   }
 
-  element.dispatchEvent(new Event('input', { bubbles: true }));
+  // Use InputEvent for better React compatibility
+  element.dispatchEvent(new InputEvent('input', { bubbles: true, data: value, inputType: 'insertText' }));
   element.dispatchEvent(new Event('change', { bubbles: true }));
   element.dispatchEvent(new Event('blur', { bubbles: true }));
 }
@@ -70,28 +79,91 @@ export function fillContentEditable(element: HTMLElement, value: string): void {
 }
 
 export function findLabelForInput(input: HTMLElement): string | null {
+  // 1. Standard <label for="id">
   const id = input.getAttribute('id');
   if (id) {
     const label = document.querySelector<HTMLLabelElement>(`label[for="${id}"]`);
     if (label) return label.textContent?.trim() || null;
   }
 
-  const parent = input.closest('label');
-  if (parent) return parent.textContent?.trim() || null;
+  // 2. Wrapped in <label>
+  const parentLabel = input.closest('label');
+  if (parentLabel) return parentLabel.textContent?.trim() || null;
 
+  // 3. Previous sibling label/span
   const prev = input.previousElementSibling;
   if (prev && (prev.tagName === 'LABEL' || prev.tagName === 'SPAN')) {
     return prev.textContent?.trim() || null;
   }
 
+  // 4. Modern React UI: look for label in parent container (form-item, form-group, etc.)
+  const formItem = input.closest(
+    '[class*="form-item"], [class*="form-group"], [class*="FormItem"], [class*="field"], [class*="Field"], [class*="input-wrapper"], [class*="InputWrapper"]'
+  );
+  if (formItem) {
+    const labelEl = formItem.querySelector(
+      'label, [class*="label"], [class*="Label"], [class*="title"], [class*="Title"]'
+    );
+    if (labelEl && labelEl !== input) {
+      const text = labelEl.textContent?.trim();
+      if (text && text.length < 30) return text;
+    }
+  }
+
+  // 5. Walk up max 3 levels to find nearby short text
+  let container: HTMLElement | null = input.parentElement;
+  for (let depth = 0; depth < 3 && container; depth++) {
+    for (const child of Array.from(container.children)) {
+      if (child === input || child.contains(input)) continue;
+      const tag = child.tagName.toLowerCase();
+      if (tag === 'label' || tag === 'span' || tag === 'div' || tag === 'p') {
+        const text = child.textContent?.trim();
+        if (text && text.length > 0 && text.length < 20 && !child.querySelector('input, select, textarea')) {
+          return text;
+        }
+      }
+    }
+    container = container.parentElement;
+  }
+
   return null;
+}
+
+export function findAllLabelsForInput(input: HTMLElement): string[] {
+  const labels: string[] = [];
+
+  // data-label / data-name attributes
+  const dataLabel = input.getAttribute('data-label') || input.getAttribute('data-name');
+  if (dataLabel) labels.push(dataLabel);
+
+  // Standard label detection
+  const mainLabel = findLabelForInput(input);
+  if (mainLabel) labels.push(mainLabel);
+
+  // Section heading context
+  let parent: HTMLElement | null = input;
+  for (let i = 0; i < 8 && parent; i++) {
+    parent = parent.parentElement;
+    if (!parent) break;
+    const heading = parent.querySelector(':scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5');
+    if (heading) {
+      const headingText = heading.textContent?.trim();
+      if (headingText && headingText.length < 30) {
+        labels.push(headingText);
+        break;
+      }
+    }
+  }
+
+  return labels;
 }
 
 export function getFieldCandidateTexts(element: HTMLElement): string[] {
   const candidates: string[] = [];
 
-  const label = findLabelForInput(element);
-  if (label) candidates.push(label);
+  // Enhanced label detection (covers React component trees)
+  const labels = findAllLabelsForInput(element);
+  candidates.push(...labels);
 
   const placeholder = element.getAttribute('placeholder');
   if (placeholder) candidates.push(placeholder);
@@ -108,5 +180,10 @@ export function getFieldCandidateTexts(element: HTMLElement): string[] {
   const title = element.getAttribute('title');
   if (title) candidates.push(title);
 
-  return candidates.filter(Boolean);
+  // data-* attributes commonly used in React apps
+  const dataTestId = element.getAttribute('data-testid') || element.getAttribute('data-test-id');
+  if (dataTestId) candidates.push(dataTestId);
+
+  // Deduplicate
+  return [...new Set(candidates.filter(Boolean))];
 }

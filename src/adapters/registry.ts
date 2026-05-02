@@ -1,7 +1,10 @@
 import type { SiteAdapter } from '@/types/adapter';
 import { GenericAdapter } from './generic';
+import { ByteDanceAdapter } from './bytedance';
 
-const adapters: SiteAdapter[] = [];
+const adapters: SiteAdapter[] = [
+  new ByteDanceAdapter(),
+];
 const genericAdapter = new GenericAdapter();
 
 export function registerAdapter(adapter: SiteAdapter): void {
